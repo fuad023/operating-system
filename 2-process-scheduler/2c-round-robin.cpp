@@ -52,7 +52,7 @@ void enqueue_process(queue<Process>& p_list, queue<Process>& p_que, int clock)
 {
     while (not p_list.empty())
     {
-        Process p = p_list.front();
+        Process& p = p_list.front();
         if (p.arrival_time <= clock)
         {
             p_que.push(p);
@@ -107,7 +107,7 @@ int main()
 
     int clock = 0, qt = 3;
     queue<Process> p_que;
-    do
+    while (not p_list.empty() | not p_que.empty())
     {
         bool q_back = false;
         if (not p_que.empty())
@@ -122,8 +122,8 @@ int main()
 
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
-        if (p_que.empty()) clock += 1;
-    } while (not p_list.empty() | not p_que.empty());
+        if (p_que.empty()) clock += p_list.front().arrival_time;
+    }
 
     print_debug_info(n);
     return 0;
