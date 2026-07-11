@@ -23,6 +23,8 @@ unordered_map<int, Debug_Process> dp_map;
 
 void gantt_chart(int clock, int time, char pid)
 {
+    if (time == 0) return;
+
     if(clock == 0) cout << "Gantt chart: 0";
     int i = time;
     while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
@@ -81,9 +83,9 @@ pair<
 int process_at_work(forward_list<Process>::iterator& sj_p, int clock)
 {
     int elapsed_time = sj_p->cpu_time;
-    Debug_Process& dp = dp_map[sj_p->pid];
-
+    
     // debug info
+    Debug_Process& dp = dp_map[sj_p->pid];
     dp.waiting_time = clock - sj_p->arrival_time;
     dp.response_time = elapsed_time;
     dp.turnaround_time = dp.waiting_time + dp.response_time;
@@ -116,15 +118,6 @@ int main()
     forward_list<Process> p_que;
     while (not p_list.empty() | not p_que.empty())
     {
-        if (not p_que.empty())
-        {
-            auto [sj_prev, sj_p] = find_sj(p_que);
-            clock += process_at_work(sj_p, clock);
-            p_que.erase_after(sj_prev);
-        }
-
-        enqueue_process(p_list, p_que, clock);
-
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
         if (p_que.empty())
@@ -133,6 +126,14 @@ int main()
             gantt_chart(clock, elapsed_time, '?');
             clock += elapsed_time;
         }
+        else
+        {
+            auto [sj_prev, sj_p] = find_sj(p_que);
+            clock += process_at_work(sj_p, clock);
+            p_que.erase_after(sj_prev);
+        }
+
+        enqueue_process(p_list, p_que, clock);
     }
 
     print_debug_info(n);

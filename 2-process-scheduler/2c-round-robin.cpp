@@ -22,6 +22,8 @@ unordered_map<int, Debug_Process> dp_map;
 
 void gantt_chart(int clock, int time, char pid)
 {
+    if (time == 0) return;
+
     if(clock == 0) cout << "Gantt chart: 0";
     int i = time;
     while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
@@ -113,15 +115,6 @@ int main()
     while (not p_list.empty() | not p_que.empty())
     {
         bool q_back = false;
-        if (not p_que.empty())
-        {
-            Process& p = p_que.front();
-            clock += process_at_work(p, qt, clock);
-            q_back = true;
-        }
-
-        enqueue_process(p_list, p_que, clock);
-        dequeue_process(p_que, q_back, clock);
 
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
@@ -131,6 +124,15 @@ int main()
             gantt_chart(clock, elapsed_time, '?');
             clock += elapsed_time;
         }
+        else
+        {
+            Process& p = p_que.front();
+            clock += process_at_work(p, qt, clock);
+            q_back = true;
+        }
+
+        enqueue_process(p_list, p_que, clock);
+        dequeue_process(p_que, q_back, clock);
     }
 
     print_debug_info(n);
