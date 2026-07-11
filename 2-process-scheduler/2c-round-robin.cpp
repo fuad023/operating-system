@@ -20,6 +20,30 @@ struct Debug_Process
 };
 unordered_map<int, Debug_Process> dp_map;
 
+void gantt_chart(int clock, int time, char pid)
+{
+    if(clock == 0) cout << "Gantt chart: 0";
+    int i = time;
+    while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
+    printf("P%c:%d", pid, clock + time);
+}
+
+void print_debug_info(int n)
+{
+    double total_tt = 0, total_wt = 0, total_rt = 0;
+    for (auto& [pid, p] : dp_map)
+    {
+        total_tt += p.turnaround_time;
+        total_wt += p.waiting_time;
+        total_rt += p.response_time;
+        printf("\nP#%d: TT %2d, WT %2d, RT %2d", pid, p.turnaround_time, p.waiting_time, p.response_time);
+    }
+
+    printf("\nAverage TT %.2lf", total_tt / n);
+    printf("\nAverage WT %.2lf", total_wt / n);
+    printf("\nAverage RT %.2lf", total_rt / n);
+}
+
 void init_process(queue<Process>& p_list, int n)
 {
     // default processes, MUST be sorted by arrival time
@@ -36,14 +60,9 @@ int process_at_work(Process& p, int qt, int clock)
     int elapsed_time = min(p.cpu_time, qt);
     p.cpu_time -= elapsed_time;
 
-    // debug statement
+    // debug info
     dp_map[p.pid].response_time += elapsed_time; // accumulates cpu time
-
-    // gantt chart
-    if(clock == 0) cout << "Gantt chart: 0";
-    int i = elapsed_time;
-    while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
-    printf("P%d:%d", p.pid, clock + elapsed_time);
+    gantt_chart(clock, elapsed_time, p.pid + '0');
 
     return elapsed_time;
 }
@@ -83,22 +102,6 @@ void dequeue_process(queue<Process>& p_que, bool q_back, int clock)
     }
 }
 
-void print_debug_info(int n)
-{
-    double total_tt = 0, total_wt = 0, total_rt = 0;
-    for (auto& [pid, p] : dp_map)
-    {
-        total_tt += p.turnaround_time;
-        total_wt += p.waiting_time;
-        total_rt += p.response_time;
-        printf("\nP#%d: TT %2d, WT %2d, RT %2d", pid, p.turnaround_time, p.waiting_time, p.response_time);
-    }
-
-    printf("\nAverage TT %.2lf", total_tt / n);
-    printf("\nAverage WT %.2lf", total_wt / n);
-    printf("\nAverage RT %.2lf", total_rt / n);
-}
-
 int main()
 {
     int n = 7;
@@ -122,7 +125,12 @@ int main()
 
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
-        if (p_que.empty()) clock += p_list.front().arrival_time;
+        if (p_que.empty())
+        {
+            int elapsed_time = p_list.front().arrival_time;
+            gantt_chart(clock, elapsed_time, '?');
+            clock += elapsed_time;
+        }
     }
 
     print_debug_info(n);

@@ -20,33 +20,12 @@ struct Debug_Process
 };
 unordered_map<int, Debug_Process> dp_map;
 
-void init_process(queue<Process>& p_list, int n)
+void gantt_chart(int clock, int time, char pid)
 {
-    // default processes, MUST be sorted by arrival time
-    // Process{ pid, arrival_time, cpu_time }
-    int p[n][3] = { { 0,0,5 }, { 1,1,3 }, { 2,2,8 }, { 3,3,6 } };
-    for (int i = 0; i < n; ++i)
-    {
-        p_list.emplace(p[i][0], p[i][1], p[i][2]);
-    }
-}
-
-int process_at_work(Process& p, int clock)
-{
-    int elapsed_time = p.cpu_time;
-
-    Debug_Process& dp = dp_map[p.pid];
-    dp.waiting_time = clock - p.arrival_time;
-    dp.response_time = elapsed_time;
-    dp.turnaround_time = dp.waiting_time + dp.response_time;
-
-    // gantt chart
     if(clock == 0) cout << "Gantt chart: 0";
-    int i = elapsed_time;
+    int i = time;
     while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
-    printf("P%d:%d", p.pid, clock + elapsed_time);
-
-    return elapsed_time;
+    printf("P%c:%d", pid, clock + time);
 }
 
 void print_debug_info(int n)
@@ -65,6 +44,31 @@ void print_debug_info(int n)
     printf("\nAverage RT %.2lf", total_rt / n);
 }
 
+void init_process(queue<Process>& p_list, int n)
+{
+    // default processes, MUST be sorted by arrival time
+    // Process{ pid, arrival_time, cpu_time }
+    int p[n][3] = { { 0,0,5 }, { 1,1,3 }, { 2,2,8 }, { 3,3,6 } };
+    for (int i = 0; i < n; ++i)
+    {
+        p_list.emplace(p[i][0], p[i][1], p[i][2]);
+    }
+}
+
+int process_at_work(Process& p, int clock)
+{
+    int elapsed_time = p.cpu_time;
+
+    // debug info
+    Debug_Process& dp = dp_map[p.pid];
+    dp.waiting_time = clock - p.arrival_time;
+    dp.response_time = elapsed_time;
+    dp.turnaround_time = dp.waiting_time + dp.response_time;
+    gantt_chart(clock, elapsed_time, p.pid + '0');
+
+    return elapsed_time;
+}
+
 int main()
 {
     int n = 4;
@@ -78,7 +82,12 @@ int main()
 
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
-        clock = max(clock, p.arrival_time);
+        if (clock < p.arrival_time)
+        {
+            int elapsed_time = p.arrival_time;
+            gantt_chart(clock, elapsed_time, '?');
+            clock += elapsed_time;
+        }
 
         clock += process_at_work(p, clock);
         p_list.pop();
