@@ -122,7 +122,7 @@ int main()
         // and arrival of another then pace up the time
         if (p_que.empty())
         {
-            int elapsed_time = p_list.front().arrival_time;
+            int elapsed_time = p_list.front().arrival_time - clock;
             gantt_chart(clock, elapsed_time, '?');
             clock += elapsed_time;
         }
