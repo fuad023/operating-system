@@ -148,7 +148,7 @@ int main()
     P#3: TT 18, WT 12, RT  6
     P#2: TT 28, WT 19, RT  9
     P#1: TT 35, WT 24, RT 11
-    Average TT 21.43
-    Average WT 14.86
-    Average RT 6.57
+    Average TT 21.429
+    Average WT 14.857
+    Average RT 6.571
 */
