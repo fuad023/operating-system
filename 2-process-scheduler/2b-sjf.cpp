@@ -1,3 +1,8 @@
+/* 
+ * Non pre-emptive shortest-job-first (SJF) scheduling algorithm
+ * Created at [2026-07-10] authored by [Fuad]
+ */
+
 #include <cstdint>
 #include <iostream>
 #include <queue>

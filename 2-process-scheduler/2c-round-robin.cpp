@@ -1,3 +1,8 @@
+/* 
+ * Pre-emptive round-robin (RR) scheduling algorithm
+ * Created at [2026-07-08] authored by [Fuad]
+ */
+
 #include <cstdint>
 #include <iostream>
 #include <queue>
