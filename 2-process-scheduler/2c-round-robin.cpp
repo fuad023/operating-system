@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 #include <queue>
 #include <unordered_map>
@@ -5,32 +6,39 @@ using namespace std;
 
 struct Process
 {
-    int pid;
-    int arrival_time;
-    int cpu_time;
+    uint32_t pid;
+    uint64_t arrival_time;
+    uint32_t cpu_time;
 
-    Process(int pid, int at, int ct) : pid(pid), arrival_time(at), cpu_time(ct) {}
+    Process(uint32_t pid, uint64_t at, uint32_t ct)
+    : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
 
 struct Debug_Process
 {
-    int turnaround_time = 0;
-    int waiting_time = 0;
-    int response_time = 0;
+    uint32_t turnaround_time = 0;
+    uint32_t waiting_time = 0;
+    uint32_t response_time = 0;
 };
-unordered_map<int, Debug_Process> dp_map;
+unordered_map<uint32_t, Debug_Process> dp_map;
 
-void gantt_chart(int clock, int time, char pid)
+void gantt_chart(uint64_t clock, uint32_t duration, char pid)
 {
-    if (time == 0) return;
+    if (clock == 0)
+    {
+        cout << "[REPRESENTATION] a---b:c\n"
+             << "`a`: starting time\n" << "`b`: ending time\n"
+             << "`c`: pid\n" << "`?`: no process\n"
+             << "`-`: # of dashes = duration\n\n"
+             << "[Gantt chart] 0";
+    }
 
-    if(clock == 0) cout << "Gantt chart: 0";
-    int i = time;
-    while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
-    printf("P%c:%d", pid, clock + time);
+    uint32_t i = duration;
+    while (i--) cout << '-';
+    printf("P%c:%d", pid, clock + duration);
 }
 
-void print_debug_info(int n)
+void print_debug_info(uint32_t n)
 {
     double total_tt = 0, total_wt = 0, total_rt = 0;
     for (auto& [pid, p] : dp_map)
@@ -41,57 +49,70 @@ void print_debug_info(int n)
         printf("\nP#%d: TT %2d, WT %2d, RT %2d", pid, p.turnaround_time, p.waiting_time, p.response_time);
     }
 
-    printf("\nAverage TT %.2lf", total_tt / n);
-    printf("\nAverage WT %.2lf", total_wt / n);
-    printf("\nAverage RT %.2lf", total_rt / n);
+    printf("\nAverage TT %.3lf", total_tt / n);
+    printf("\nAverage WT %.3lf", total_wt / n);
+    printf("\nAverage RT %.3lf\n", total_rt / n);
 }
 
-void init_process(queue<Process>& p_list, int n)
+void enq_process(queue<Process>& process_q, uint32_t n)
 {
     // default processes, MUST be sorted by arrival time
     // Process{ pid, arrival_time, cpu_time }
-    int p[n][3] = { { 1,0,11 }, { 2,2,9 }, { 3,3,6 }, { 4,6,3 }, { 5,15,11 }, { 6,21,4 }, { 7,31,2 } };
-    for (int i = 0; i < n; ++i)
+    uint32_t p[n][3] = { { 1,0,11 }, { 2,2,9 }, { 3,3,6 }, { 4,6,3 }, { 5,15,11 }, { 6,21,4 }, { 7,31,2 } };
+    for (uint32_t i = 0; i < n; ++i)
     {
-        p_list.emplace(p[i][0], p[i][1], p[i][2]);
+        process_q.emplace(p[i][0], p[i][1], p[i][2]);
     }
 }
 
-int process_at_work(Process& p, int qt, int clock)
+uint64_t pace_up(Process& p, uint64_t clock)
 {
-    int elapsed_time = min(p.cpu_time, qt);
-    p.cpu_time -= elapsed_time;
+    uint32_t duration = 0;
+    if (clock < p.arrival_time)
+    {
+        duration = p.arrival_time - clock;
+        gantt_chart(clock, duration, '?');
+    }
 
-    // debug info
-    dp_map[p.pid].response_time += elapsed_time; // accumulates cpu time
-    gantt_chart(clock, elapsed_time, p.pid + '0');
-
-    return elapsed_time;
+    return duration;
 }
 
-void enqueue_process(queue<Process>& p_list, queue<Process>& p_que, int clock)
+uint64_t cpu(Process& p, uint32_t qt, uint64_t clock)
 {
-    while (not p_list.empty())
+    uint32_t duration = min(p.cpu_time, qt);
+    p.cpu_time -= duration;
+
+    // debug info
+    Debug_Process& dp = dp_map[p.pid];
+    dp.response_time += duration;
+    gantt_chart(clock, duration, p.pid + '0');
+
+    return duration;
+}
+
+void enq_ready(queue<Process>& process_q, queue<Process>& ready_q, uint64_t clock)
+{
+    while (not process_q.empty())
     {
-        Process& p = p_list.front();
+        Process& p = process_q.front();
         if (p.arrival_time <= clock)
         {
-            p_que.push(p);
-            p_list.pop();
+            ready_q.push(p);
+            process_q.pop();
         }
         else break;
     }
 }
 
-void dequeue_process(queue<Process>& p_que, bool q_back, int clock)
+void deq_ready(queue<Process>& ready_q, bool q_back, uint64_t clock)
 {
     if (q_back)
     {
-        Process p = p_que.front();
-        p_que.pop();
+        Process p = ready_q.front(); // if no debug block, create reference instead
+        ready_q.pop();
         if (p.cpu_time > 0)
         {
-            p_que.push(p);
+            ready_q.push(p);
         }
 
         // debug block, goes into else block when a process ends
@@ -106,33 +127,35 @@ void dequeue_process(queue<Process>& p_que, bool q_back, int clock)
 
 int main()
 {
-    int n = 7;
-    queue<Process> p_list;
-    init_process(p_list, n);
+    uint32_t n = 7;
+    queue<Process> process_q;
+    enq_process(process_q, n);
 
-    int clock = 0, qt = 3;
-    queue<Process> p_que;
-    while (not p_list.empty() | not p_que.empty())
+    uint64_t clock = 0;
+    uint32_t qt = 3;
+    queue<Process> ready_q;
+    while (not process_q.empty() | not ready_q.empty())
     {
         bool q_back = false;
 
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
-        if (p_que.empty())
+        if (ready_q.empty())
         {
-            int elapsed_time = p_list.front().arrival_time - clock;
-            gantt_chart(clock, elapsed_time, '?');
-            clock += elapsed_time;
+            Process& p = process_q.front();
+            clock += pace_up(p, clock);
         }
         else
         {
-            Process& p = p_que.front();
-            clock += process_at_work(p, qt, clock);
+            // process on cpu
+            Process& p = ready_q.front();
+            clock += cpu(p, qt, clock);
             q_back = true;
         }
 
-        enqueue_process(p_list, p_que, clock);
-        dequeue_process(p_que, q_back, clock);
+        // enqueue ready
+        enq_ready(process_q, ready_q, clock);
+        deq_ready(ready_q, q_back, clock);
     }
 
     print_debug_info(n);
@@ -148,7 +171,7 @@ int main()
     P#3: TT 18, WT 12, RT  6
     P#2: TT 28, WT 19, RT  9
     P#1: TT 35, WT 24, RT 11
-    Average TT 21.429
-    Average WT 14.857
-    Average RT 6.571
+    Average TT 21.43
+    Average WT 14.86
+    Average RT 6.57
 */

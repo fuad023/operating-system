@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <forward_list>
 #include <iostream>
 #include <queue>
@@ -6,32 +7,39 @@ using namespace std;
 
 struct Process
 {
-    int pid;
-    int arrival_time;
-    int cpu_time;
+    uint32_t pid;
+    uint64_t arrival_time;
+    uint32_t cpu_time;
 
-    Process(int pid, int at, int ct) : pid(pid), arrival_time(at), cpu_time(ct) {}
+    Process(uint32_t pid, uint64_t at, uint32_t ct)
+    : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
 
 struct Debug_Process
 {
-    int turnaround_time = 0;
-    int waiting_time = 0;
-    int response_time = 0;
+    uint32_t turnaround_time = 0;
+    uint32_t waiting_time = 0;
+    uint32_t response_time = 0;
 };
-unordered_map<int, Debug_Process> dp_map;
+unordered_map<uint32_t, Debug_Process> dp_map;
 
-void gantt_chart(int clock, int time, char pid)
+void gantt_chart(uint64_t clock, uint32_t duration, char pid)
 {
-    if (time == 0) return;
+    if (clock == 0)
+    {
+        cout << "[REPRESENTATION] a---b:c\n"
+             << "`a`: starting time\n" << "`b`: ending time\n"
+             << "`c`: pid\n" << "`?`: no process\n"
+             << "`-`: # of dashes = duration\n\n"
+             << "[Gantt chart] 0";
+    }
 
-    if(clock == 0) cout << "Gantt chart: 0";
-    int i = time;
-    while (i--) cout << '-'; // # of dashes is equal to `elapsed_time`
-    printf("P%c:%d", pid, clock + time);
+    uint32_t i = duration;
+    while (i--) cout << '-';
+    printf("P%c:%d", pid, clock + duration);
 }
 
-void print_debug_info(int n)
+void print_debug_info(uint32_t n)
 {
     double total_tt = 0, total_wt = 0, total_rt = 0;
     for (auto& [pid, p] : dp_map)
@@ -42,32 +50,44 @@ void print_debug_info(int n)
         printf("\nP#%d: TT %2d, WT %2d, RT %2d", pid, p.turnaround_time, p.waiting_time, p.response_time);
     }
 
-    printf("\nAverage TT %.2lf", total_tt / n);
-    printf("\nAverage WT %.2lf", total_wt / n);
-    printf("\nAverage RT %.2lf", total_rt / n);
+    printf("\nAverage TT %.3lf", total_tt / n);
+    printf("\nAverage WT %.3lf", total_wt / n);
+    printf("\nAverage RT %.3lf\n", total_rt / n);
 }
 
-void init_process(queue<Process>& p_list, int n)
+void enq_process(queue<Process>& process_q, uint32_t n)
 {
     // default processes, MUST be sorted by arrival time
     // Process{ pid, arrival_time, cpu_time }
-    int p[n][3] = { { 0,0,8 }, { 1,1,4 }, { 2,2,9 }, { 3,3,5 } };
-    for (int i = 0; i < n; ++i)
+    uint32_t p[n][3] = { { 0,0,8 }, { 1,1,4 }, { 2,2,9 }, { 3,3,5 } };
+    for (uint32_t i = 0; i < n; ++i)
     {
-        p_list.emplace(p[i][0], p[i][1], p[i][2]);
+        process_q.emplace(p[i][0], p[i][1], p[i][2]);
     }
+}
+
+uint64_t pace_up(Process& p, uint64_t clock)
+{
+    uint32_t duration = 0;
+    if (clock < p.arrival_time)
+    {
+        duration = p.arrival_time - clock;
+        gantt_chart(clock, duration, '?');
+    }
+
+    return duration;
 }
 
 pair<
     forward_list<Process>::iterator,
     forward_list<Process>::iterator
-> find_sj(forward_list<Process>& p_list)
+> find_sj(forward_list<Process>& process_q)
 {
     // find shortest job as `sj_p`
-    auto sj_prev = p_list.before_begin();
-    auto prev = p_list.before_begin();
-    auto sj_p = p_list.begin();
-    for (auto p = p_list.begin(); p != p_list.end(); ++p)
+    auto sj_prev = process_q.before_begin();
+    auto prev = process_q.before_begin();
+    auto sj_p = process_q.begin();
+    for (auto p = process_q.begin(); p != process_q.end(); ++p)
     {
         if (p->cpu_time < sj_p->cpu_time)
         {
@@ -80,29 +100,29 @@ pair<
     return { sj_prev, sj_p };
 }
 
-int process_at_work(forward_list<Process>::iterator& sj_p, int clock)
+uint64_t cpu(forward_list<Process>::iterator& sj_p, uint64_t clock)
 {
-    int elapsed_time = sj_p->cpu_time;
-    
+    uint32_t duration = sj_p->cpu_time;
+
     // debug info
     Debug_Process& dp = dp_map[sj_p->pid];
     dp.waiting_time = clock - sj_p->arrival_time;
-    dp.response_time = elapsed_time;
+    dp.response_time = duration;
     dp.turnaround_time = dp.waiting_time + dp.response_time;
-    gantt_chart(clock, elapsed_time, sj_p->pid + '0');
+    gantt_chart(clock, duration, sj_p->pid + '0');
 
-    return elapsed_time;
+    return duration;
 }
 
-void enqueue_process(queue<Process>& p_list, forward_list<Process>& p_que, int clock)
+void enq_ready(queue<Process>& process_q, forward_list<Process>& ready_q, uint64_t clock)
 {
-    while (not p_list.empty())
+    while (not process_q.empty())
     {
-        Process& p = p_list.front();
+        Process& p = process_q.front();
         if (p.arrival_time <= clock)
         {
-            p_que.push_front(p);
-            p_list.pop();
+            ready_q.push_front(p);
+            process_q.pop();
         }
         else break;
     }
@@ -110,30 +130,31 @@ void enqueue_process(queue<Process>& p_list, forward_list<Process>& p_que, int c
 
 int main()
 {
-    int n = 4;
-    queue<Process> p_list;
-    init_process(p_list, n);
+    uint32_t n = 4;
+    queue<Process> process_q;
+    enq_process(process_q, n);
 
-    int clock = 0;
-    forward_list<Process> p_que;
-    while (not p_list.empty() | not p_que.empty())
+    uint64_t clock = 0;
+    forward_list<Process> ready_q;
+    while (not process_q.empty() | not ready_q.empty())
     {
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
-        if (p_que.empty())
+        if (ready_q.empty())
         {
-            int elapsed_time = p_list.front().arrival_time - clock;
-            gantt_chart(clock, elapsed_time, '?');
-            clock += elapsed_time;
+            Process& p = process_q.front();
+            clock += pace_up(p, clock);
         }
         else
         {
-            auto [sj_prev, sj_p] = find_sj(p_que);
-            clock += process_at_work(sj_p, clock);
-            p_que.erase_after(sj_prev);
+            // process on cpu
+            auto [sj_prev, sj_p] = find_sj(ready_q);
+            clock += cpu(sj_p, clock);
+            ready_q.erase_after(sj_prev);
         }
 
-        enqueue_process(p_list, p_que, clock);
+        // enqueue ready
+        enq_ready(process_q, ready_q, clock);
     }
 
     print_debug_info(n);
