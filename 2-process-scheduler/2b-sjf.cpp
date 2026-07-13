@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <forward_list>
 #include <iostream>
 #include <queue>
 #include <unordered_map>
@@ -14,6 +13,17 @@ struct Process
     Process(uint32_t pid, uint64_t at, uint32_t ct)
     : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
+
+struct CompareProcess
+{
+    bool operator()(Process& a, Process& b)
+    {
+        return a.cpu_time != b.cpu_time ? a.cpu_time > b.cpu_time
+            : a.arrival_time != b.arrival_time ? a.arrival_time > b.arrival_time
+            : a.pid > b.pid;
+    }
+};
+using ReadyQueue = std::priority_queue<Process, std::vector<Process>, CompareProcess>;
 
 struct Debug_Process
 {
@@ -78,50 +88,28 @@ uint64_t pace_up(Process& p, uint64_t clock)
     return duration;
 }
 
-pair<
-    forward_list<Process>::iterator,
-    forward_list<Process>::iterator
-> find_sj(forward_list<Process>& process_q)
+uint64_t cpu(const Process& p, uint64_t clock)
 {
-    // find shortest job as `sj_p`
-    auto sj_prev = process_q.before_begin();
-    auto prev = process_q.before_begin();
-    auto sj_p = process_q.begin();
-    for (auto p = process_q.begin(); p != process_q.end(); ++p)
-    {
-        if (p->cpu_time < sj_p->cpu_time)
-        {
-            sj_p = p;
-            sj_prev = prev;
-        }
-        ++prev;
-    }
-
-    return { sj_prev, sj_p };
-}
-
-uint64_t cpu(forward_list<Process>::iterator& sj_p, uint64_t clock)
-{
-    uint32_t duration = sj_p->cpu_time;
+    uint32_t duration = p.cpu_time;
 
     // debug info
-    Debug_Process& dp = dp_map[sj_p->pid];
-    dp.waiting_time = clock - sj_p->arrival_time;
+    Debug_Process& dp = dp_map[p.pid];
+    dp.waiting_time = clock - p.arrival_time;
     dp.response_time = duration;
     dp.turnaround_time = dp.waiting_time + dp.response_time;
-    gantt_chart(clock, duration, sj_p->pid + '0');
+    gantt_chart(clock, duration, p.pid + '0');
 
     return duration;
 }
 
-void enq_ready(queue<Process>& process_q, forward_list<Process>& ready_q, uint64_t clock)
+void enq_ready(queue<Process>& process_q, ReadyQueue& ready_q, uint64_t clock)
 {
     while (not process_q.empty())
     {
         Process& p = process_q.front();
         if (p.arrival_time <= clock)
         {
-            ready_q.push_front(p);
+            ready_q.push(p);
             process_q.pop();
         }
         else break;
@@ -135,7 +123,7 @@ int main()
     enq_process(process_q, n);
 
     uint64_t clock = 0;
-    forward_list<Process> ready_q;
+    ReadyQueue ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
         // if there is any time gap betw end of a process
@@ -148,9 +136,9 @@ int main()
         else
         {
             // process on cpu
-            auto [sj_prev, sj_p] = find_sj(ready_q);
-            clock += cpu(sj_p, clock);
-            ready_q.erase_after(sj_prev);
+            const Process& p = ready_q.top();
+            clock += cpu(p, clock);
+            ready_q.pop();
         }
 
         // enqueue ready
