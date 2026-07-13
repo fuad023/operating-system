@@ -115,24 +115,23 @@ int main()
     queue<Process> ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
-        if (not process_q.empty())
+        // if there is any time gap betw end of a process
+        // and arrival of another then pace up the time
+        if (ready_q.empty())
         {
-            // pace up time for delay betw
-            // end of last process and arrival of new
             Process& p = process_q.front();
             clock += pace_up(p, clock);
-
-            // enqueue ready
-            enq_ready(process_q, ready_q, clock);
         }
-
-        if (not ready_q.empty())
+        else
         {
             // process on cpu
             Process& p = ready_q.front();
             clock += cpu(p, clock);
             ready_q.pop();
         }
+
+        // enqueue ready
+        enq_ready(process_q, ready_q, clock);
     }
 
     print_debug_info(n);
