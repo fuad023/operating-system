@@ -21,7 +21,7 @@ struct Process
 
 struct CompareProcess
 {
-    bool operator()(Process& a, Process& b)
+    bool operator()(const Process& a, const Process& b) const
     {
         return a.cpu_time != b.cpu_time ? a.cpu_time > b.cpu_time
             : a.arrival_time != b.arrival_time ? a.arrival_time > b.arrival_time
