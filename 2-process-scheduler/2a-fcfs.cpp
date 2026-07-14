@@ -71,7 +71,7 @@ void enq_process(queue<Process>& process_q, uint32_t n)
     }
 }
 
-uint64_t pace_up(Process& p, uint64_t clock)
+uint64_t skip_idle_cpu(Process& p, uint64_t clock)
 {
     uint32_t duration = 0;
     if (clock < p.arrival_time)
@@ -83,7 +83,7 @@ uint64_t pace_up(Process& p, uint64_t clock)
     return duration;
 }
 
-uint64_t cpu(Process& p, uint64_t clock)
+uint64_t dispatch_process(Process& p, uint64_t clock)
 {
     uint32_t duration = p.cpu_time;
 
@@ -97,7 +97,7 @@ uint64_t cpu(Process& p, uint64_t clock)
     return duration;
 }
 
-void enq_ready(queue<Process>& process_q, queue<Process>& ready_q, uint64_t clock)
+void admit_processes(queue<Process>& process_q, queue<Process>& ready_q, uint64_t clock)
 {
     while (not process_q.empty())
     {
@@ -121,24 +121,24 @@ int main()
     queue<Process> ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
-        Process p;
+        Process running_p;
 
-        // if there is any time gap betw end of a process
-        // and arrival of another then pace up the time
+        // cpu sits idle within time gap betw
+        // end of a process and arrival of another
         if (ready_q.empty())
         {
             Process& p = process_q.front();
-            clock += pace_up(p, clock);
+            clock += skip_idle_cpu(p, clock);
         }
         else
         {
-            // process on cpu
-            p = ready_q.front(); ready_q.pop();
-            clock += cpu(p, clock);
+            // dispatch next ready process to cpu
+            running_p = ready_q.front(); ready_q.pop();
+            clock += dispatch_process(running_p, clock);
         }
 
-        // enqueue ready
-        enq_ready(process_q, ready_q, clock);
+        // admit newly arrived processes into ready queue
+        admit_processes(process_q, ready_q, clock);
     }
 
     print_debug_info(n);

@@ -86,7 +86,7 @@ void enq_process(queue<Process>& process_q, uint32_t n)
     }
 }
 
-uint64_t pace_up(Process& p, uint64_t clock)
+uint64_t skip_idle_cpu(Process& p, uint64_t clock)
 {
     uint32_t duration = 0;
     if (clock < p.arrival_time)
@@ -111,7 +111,7 @@ uint32_t context_switch(queue<Process>& process_q, Process& p, uint64_t clock)
     return p.cpu_time;
 }
 
-uint64_t cpu(Process& p, uint32_t duration, uint64_t clock)
+uint64_t dispatch_process(Process& p, uint32_t duration, uint64_t clock)
 {
     p.cpu_time -= duration;
 
@@ -123,7 +123,7 @@ uint64_t cpu(Process& p, uint32_t duration, uint64_t clock)
     return duration;
 }
 
-void enq_ready(queue<Process>& process_q, ReadyQueue& ready_q, uint64_t clock)
+void admit_processes(queue<Process>& process_q, ReadyQueue& ready_q, uint64_t clock)
 {
     while (not process_q.empty())
     {
@@ -137,9 +137,9 @@ void enq_ready(queue<Process>& process_q, ReadyQueue& ready_q, uint64_t clock)
     }
 }
 
-void deq_ready(ReadyQueue& ready_q, Process& p, bool q_back, uint64_t clock)
+void preempt_process(ReadyQueue& ready_q, Process& p, bool preempt, uint64_t clock)
 {
-    if (q_back)
+    if (preempt)
     {
         if (p.cpu_time > 0)
         {
@@ -166,29 +166,30 @@ int main()
     ReadyQueue ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
-        Process p;
-        bool q_back = false;
+        Process running_p;
+        bool preempt = false;
 
-        // if there is any time gap betw end of a process
-        // and arrival of another then pace up the time
+        // cpu sits idle within time gap betw
+        // end of a process and arrival of another
         if (ready_q.empty())
         {
             Process& p = process_q.front();
-            clock += pace_up(p, clock);
+            clock += skip_idle_cpu(p, clock);
         }
         else
         {
-            p = ready_q.top(); ready_q.pop();
-            uint32_t duration = context_switch(process_q, p, clock);
-
-            // process on cpu
-            clock += cpu(p, duration, clock);
-            q_back = true;
+            // dispatch next ready process to cpu
+            running_p = ready_q.top(); ready_q.pop();
+            uint32_t duration = context_switch(process_q, running_p, clock);
+            clock += dispatch_process(running_p, duration, clock);
+            preempt = true;
         }
 
-        // enqueue ready
-        enq_ready(process_q, ready_q, clock);
-        deq_ready(ready_q, p, q_back, clock);
+        // admit newly arrived processes into ready queue
+        admit_processes(process_q, ready_q, clock);
+
+        // pre-empt running process
+        preempt_process(ready_q, running_p, preempt, clock);
     }
 
     print_debug_info(n);
