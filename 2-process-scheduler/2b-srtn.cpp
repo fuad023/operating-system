@@ -20,6 +20,8 @@ struct Process
     : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
 
+// if (CompareProcess{}(a, b))
+// cout << "`a` has lower priority than `b`";
 struct CompareProcess
 {
     bool operator()(const Process& a, const Process& b) const
@@ -29,7 +31,7 @@ struct CompareProcess
             : a.pid > b.pid;
     }
 };
-using ReadyQueue = std::priority_queue<Process, std::vector<Process>, CompareProcess>;
+using ReadyQueue = priority_queue<Process, vector<Process>, CompareProcess>;
 
 struct Debug_Process
 {
@@ -174,9 +176,8 @@ int main()
         }
         else
         {
-            p = ready_q.top();
-            ready_q.pop();
-            uint32_t duration = context_switch(process_q, p, clock);;
+            p = ready_q.top(); ready_q.pop();
+            uint32_t duration = context_switch(process_q, p, clock);
 
             // process on cpu
             clock += cpu(p, duration, clock);

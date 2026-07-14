@@ -16,6 +16,7 @@ struct Process
     uint32_t cpu_time;
     uint32_t priority;
 
+    Process() {}
     Process(uint32_t pid, uint64_t at, uint32_t ct, uint32_t priority)
     : pid(pid), arrival_time(at), cpu_time(ct), priority(priority) {}
 };
@@ -97,7 +98,7 @@ uint64_t pace_up(Process& p, uint64_t clock)
     return duration;
 }
 
-uint64_t cpu(const Process& p, uint64_t clock)
+uint64_t cpu(Process& p, uint64_t clock)
 {
     uint32_t duration = p.cpu_time;
 
@@ -135,6 +136,8 @@ int main()
     ReadyQueue ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
+        Process p;
+
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
         if (ready_q.empty())
@@ -145,9 +148,8 @@ int main()
         else
         {
             // process on cpu
-            const Process& p = ready_q.top();
+            p = ready_q.top(); ready_q.pop();
             clock += cpu(p, clock);
-            ready_q.pop();
         }
 
         // enqueue ready

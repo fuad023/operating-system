@@ -15,6 +15,7 @@ struct Process
     uint64_t arrival_time;
     uint32_t cpu_time;
 
+    Process() {}
     Process(uint32_t pid, uint64_t at, uint32_t ct)
     : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
@@ -120,6 +121,8 @@ int main()
     queue<Process> ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
+        Process p;
+
         // if there is any time gap betw end of a process
         // and arrival of another then pace up the time
         if (ready_q.empty())
@@ -130,9 +133,8 @@ int main()
         else
         {
             // process on cpu
-            Process& p = ready_q.front();
+            p = ready_q.front(); ready_q.pop();
             clock += cpu(p, clock);
-            ready_q.pop();
         }
 
         // enqueue ready
@@ -144,12 +146,12 @@ int main()
 }
 
 /*
-    Gantt chart: 0-----P0:5---P1:8--------P2:16------P3:22
+    [Gantt chart] 0-----P0:5---P1:8--------P2:16------P3:22
     P#3: TT 19, WT 13, RT  6
     P#2: TT 14, WT  6, RT  8
     P#1: TT  7, WT  4, RT  3
     P#0: TT  5, WT  0, RT  5
-    Average TT 11.25
-    Average WT 5.75
-    Average RT 5.50
+    Average TT 11.250
+    Average WT 5.750
+    Average RT 5.500
 */

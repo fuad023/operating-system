@@ -15,6 +15,7 @@ struct Process
     uint64_t arrival_time;
     uint32_t cpu_time;
 
+    Process() {}
     Process(uint32_t pid, uint64_t at, uint32_t ct)
     : pid(pid), arrival_time(at), cpu_time(ct) {}
 };
@@ -109,12 +110,10 @@ void enq_ready(queue<Process>& process_q, queue<Process>& ready_q, uint64_t cloc
     }
 }
 
-void deq_ready(queue<Process>& ready_q, bool q_back, uint64_t clock)
+void deq_ready(queue<Process>& ready_q, Process& p, bool q_back, uint64_t clock)
 {
     if (q_back)
     {
-        Process p = ready_q.front(); // if no debug block, create reference instead
-        ready_q.pop();
         if (p.cpu_time > 0)
         {
             ready_q.push(p);
@@ -141,6 +140,7 @@ int main()
     queue<Process> ready_q;
     while (not process_q.empty() | not ready_q.empty())
     {
+        Process p;
         bool q_back = false;
 
         // if there is any time gap betw end of a process
@@ -153,14 +153,14 @@ int main()
         else
         {
             // process on cpu
-            Process& p = ready_q.front();
+            p = ready_q.front(); ready_q.pop();
             clock += cpu(p, qt, clock);
             q_back = true;
         }
 
         // enqueue ready
         enq_ready(process_q, ready_q, clock);
-        deq_ready(ready_q, q_back, clock);
+        deq_ready(ready_q, p, q_back, clock);
     }
 
     print_debug_info(n);
@@ -168,7 +168,7 @@ int main()
 }
 
 /*
-    Gantt chart: 0---P1:3---P2:6---P3:9---P1:12---P4:15---P2:18---P3:21---P1:24---P5:27---P2:30---P6:33--P1:35---P5:38--P7:40-P6:41---P5:44--P5:46
+    [Gantt chart] 0---P1:3---P2:6---P3:9---P1:12---P4:15---P2:18---P3:21---P1:24---P5:27---P2:30---P6:33--P1:35---P5:38--P7:40-P6:41---P5:44--P5:46
     P#7: TT  9, WT  7, RT  2
     P#6: TT 20, WT 16, RT  4
     P#5: TT 31, WT 20, RT 11
@@ -176,7 +176,7 @@ int main()
     P#3: TT 18, WT 12, RT  6
     P#2: TT 28, WT 19, RT  9
     P#1: TT 35, WT 24, RT 11
-    Average TT 21.43
-    Average WT 14.86
-    Average RT 6.57
+    Average TT 21.429
+    Average WT 14.857
+    Average RT 6.571
 */

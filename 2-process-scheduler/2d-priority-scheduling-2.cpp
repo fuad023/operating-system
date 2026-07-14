@@ -178,9 +178,8 @@ int main()
         }
         else
         {
-            p = ready_q.top();
-            ready_q.pop();
-            uint32_t duration = context_switch(process_q, p, clock);;
+            p = ready_q.top(); ready_q.pop();
+            uint32_t duration = context_switch(process_q, p, clock);
 
             // process on cpu
             clock += cpu(p, duration, clock);
