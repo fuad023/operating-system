@@ -98,17 +98,18 @@ uint64_t skip_idle_cpu(Process& p, uint64_t clock)
     return duration;
 }
 
-uint32_t context_switch(queue<Process>& process_q, Process& p, uint64_t clock)
+uint32_t calc_run_duration(queue<Process>& process_q, Process& p, uint64_t clock)
 {
     if (process_q.empty()) return p.cpu_time;
 
     const Process& next = process_q.front();
+    uint32_t duration = p.cpu_time;
     if (next.arrival_time < clock + p.cpu_time && CompareProcess{}(p, next))
     {
-        return next.arrival_time - clock;
+        duration = next.arrival_time - clock;
     }
 
-    return p.cpu_time;
+    return duration;
 }
 
 uint64_t dispatch_process(Process& p, uint32_t duration, uint64_t clock)
@@ -180,7 +181,7 @@ int main()
         {
             // dispatch next ready process to cpu
             running_p = ready_q.top(); ready_q.pop();
-            uint32_t duration = context_switch(process_q, running_p, clock);
+            uint32_t duration = calc_run_duration(process_q, running_p, clock);
             clock += dispatch_process(running_p, duration, clock);
             preempt = true;
         }
