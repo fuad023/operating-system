@@ -36,6 +36,12 @@ using ReadyQueue = std::priority_queue<Process, std::vector<Process>, ComparePro
 
 struct Debug_Process
 {
+    uint64_t arrival_time;
+    uint32_t cpu_time;
+
+    uint32_t starting_time = -1;
+    uint32_t ending_time = -1;
+
     uint32_t turnaround_time = 0;
     uint32_t waiting_time = 0;
     uint32_t response_time = 0;
@@ -60,7 +66,7 @@ void gantt_chart(uint64_t clock, uint32_t duration, char pid)
 
 void print_debug_info(uint32_t n)
 {
-    cout << "\n PID   TT   WT   RT\n";
+    cout << "\n PID   AT   CT   ST   FT   TT   WT   RT\n";
     double total_tt = 0, total_wt = 0, total_rt = 0;
     for (auto& [pid, p] : dp_map)
     {
@@ -68,6 +74,10 @@ void print_debug_info(uint32_t n)
         total_wt += p.waiting_time;
         total_rt += p.response_time;
         cout << "  P" << pid
+             << setw(5) << p.arrival_time
+             << setw(5) << p.cpu_time
+             << setw(5) << p.starting_time
+             << setw(5) << p.ending_time
              << setw(5) << p.turnaround_time
              << setw(5) << p.waiting_time
              << setw(5) << p.response_time << '\n';
@@ -85,9 +95,11 @@ void enq_process(queue<Process>& process_q, uint32_t n)
     // default processes, MUST be sorted by arrival time
     // Process{ pid, arrival_time, cpu_time }
     uint32_t p[n][3] = { { 0,0,8 }, { 1,1,4 }, { 2,2,9 }, { 3,3,5 } };
-    for (uint32_t i = 0; i < n; ++i)
+    for (auto& [pid, at, ct] : p)
     {
-        process_q.emplace(p[i][0], p[i][1], p[i][2]);
+        process_q.emplace(pid, at, ct);
+        dp_map[pid].arrival_time = at;
+        dp_map[pid].cpu_time = ct;
     }
 }
 
@@ -109,9 +121,14 @@ uint64_t dispatch_process(Process& p, uint64_t clock)
 
     // debug info
     Debug_Process& dp = dp_map[p.pid];
-    dp.waiting_time = clock - p.arrival_time;
-    dp.response_time = duration;
-    dp.turnaround_time = dp.waiting_time + dp.response_time;
+    if (dp.starting_time == -1)
+    {
+        dp.starting_time = clock;
+        dp.response_time = dp.starting_time - dp.arrival_time;
+    }
+    dp.ending_time = dp.starting_time + duration;
+    dp.turnaround_time = dp.ending_time - dp.arrival_time;
+    dp.waiting_time = dp.turnaround_time - dp.cpu_time;
     gantt_chart(clock, duration, p.pid + '0');
 
     return duration;
@@ -167,12 +184,12 @@ int main()
 
 /*
     [Gantt chart] 0--------P0:8----P1:12-----P3:17---------P2:26
-    PID   TT   WT   RT
-     P2   24   15    9
-     P3   14    9    5
-     P1   11    7    4
-     P0    8    0    8
+    PID   AT   CT   ST   FT   TT   WT   RT
+     P3    3    5   12   17   14    9    9
+     P2    2    9   17   26   24   15   15
+     P1    1    4    8   12   11    7    7
+     P0    0    8    0    8    8    0    0
     Average TT 14.250
     Average WT 7.750
-    Average RT 6.500
+    Average RT 7.750
 */
