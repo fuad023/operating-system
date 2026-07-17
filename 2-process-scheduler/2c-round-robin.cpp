@@ -4,6 +4,7 @@
  */
 
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
 #include <queue>
 #include <unordered_map>
@@ -46,18 +47,24 @@ void gantt_chart(uint64_t clock, uint32_t duration, char pid)
 
 void print_debug_info(uint32_t n)
 {
+    cout << "\n PID   TT   WT   RT\n";
     double total_tt = 0, total_wt = 0, total_rt = 0;
     for (auto& [pid, p] : dp_map)
     {
         total_tt += p.turnaround_time;
         total_wt += p.waiting_time;
         total_rt += p.response_time;
-        printf("\nP#%d: TT %2d, WT %2d, RT %2d", pid, p.turnaround_time, p.waiting_time, p.response_time);
+        cout << "  P" << pid
+             << setw(5) << p.turnaround_time
+             << setw(5) << p.waiting_time
+             << setw(5) << p.response_time << '\n';
     }
 
-    printf("\nAverage TT %.3lf", total_tt / n);
-    printf("\nAverage WT %.3lf", total_wt / n);
-    printf("\nAverage RT %.3lf\n", total_rt / n);
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "Average TT " << total_tt / n << '\n';
+    std::cout << "Average WT " << total_wt / n << '\n';
+    std::cout << "Average RT " << total_rt / n << '\n';
+    std::cout << std::defaultfloat;
 }
 
 void enq_process(queue<Process>& process_q, uint32_t n)
@@ -171,13 +178,14 @@ int main()
 
 /*
     [Gantt chart] 0---P1:3---P2:6---P3:9---P1:12---P4:15---P2:18---P3:21---P1:24---P5:27---P2:30---P6:33--P1:35---P5:38--P7:40-P6:41---P5:44--P5:46
-    P#7: TT  9, WT  7, RT  2
-    P#6: TT 20, WT 16, RT  4
-    P#5: TT 31, WT 20, RT 11
-    P#4: TT  9, WT  6, RT  3
-    P#3: TT 18, WT 12, RT  6
-    P#2: TT 28, WT 19, RT  9
-    P#1: TT 35, WT 24, RT 11
+    PID   TT   WT   RT
+     P7    9    7    2
+     P6   20   16    4
+     P5   31   20   11
+     P4    9    6    3
+     P3   18   12    6
+     P2   28   19    9
+     P1   35   24   11
     Average TT 21.429
     Average WT 14.857
     Average RT 6.571
